@@ -300,7 +300,7 @@ export function KanbanBoard() {
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/75">
                 Organize work visually: create tasks, prioritize, and drag cards
-                across stages. Everything stays in your browser — no server yet.
+                across stages.
               </p>
             </div>
             <div className="inline-flex h-[48px] shrink-0 items-center justify-center rounded-xl bg-[#a2ad59]/50 px-5 text-sm font-semibold text-[#0c2524]/70 sm:h-[48px]">
@@ -332,7 +332,7 @@ export function KanbanBoard() {
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/75">
               Organize work visually: create tasks, prioritize, and drag cards
-              across stages. Everything stays in your browser — no server yet.
+              across stages.
             </p>
           </div>
           <button
