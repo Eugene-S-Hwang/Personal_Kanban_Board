@@ -71,7 +71,7 @@ export function TaskCard({
     <article
       ref={setNodeRef}
       style={style}
-      className={`group relative rounded-xl border bg-[var(--kb-surface)] p-3 shadow-sm shadow-black/20 backdrop-blur-sm transition-[box-shadow,opacity] ${dueRing} ${
+      className={`relative rounded-xl border bg-[var(--kb-surface)] p-3 shadow-sm shadow-black/20 backdrop-blur-sm transition-[box-shadow,opacity] ${dueRing} ${
         isDragging ? "z-10 opacity-40 shadow-lg" : "hover:border-[#a2ad59]/45"
       }`}
     >
@@ -160,7 +160,7 @@ export function TaskCard({
           ) : null}
         </div>
       </div>
-      <div className="mt-3 flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <div className="mt-3 flex justify-end gap-1">
         <button
           type="button"
           className="rounded-lg px-2 py-1 text-xs font-medium text-[#a2ad59] hover:bg-[#a2ad59]/15"
