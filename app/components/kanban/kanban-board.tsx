@@ -6,111 +6,44 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCorners,
-  defaultDropAnimationSideEffects,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
-  type DropAnimation,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
+import { createClient } from "@/app/utils/supabase/client";
+import {
+  COLUMN_ACCENTS,
+  COLUMN_SUBTITLES,
+  dropAnimation,
+  emptyColumns,
+  findColumnForTask,
+  groupTasksByColumn,
+  isColumnId,
+  useIsClient,
+} from "./kanban-board-utils";
 import { KanbanColumn } from "./kanban-column";
 import { TaskFormDialog } from "./task-form-dialog";
 import type { ColumnId, Task, TaskPriority } from "./types";
 import { COLUMN_LABELS, COLUMN_ORDER } from "./types";
 
-function isColumnId(id: string): id is ColumnId {
-  return (COLUMN_ORDER as readonly string[]).includes(id);
-}
-
-const COLUMN_ACCENTS: Record<ColumnId, string> = {
-  "to-do": "bg-[#6ec9bc]",
-  "in-progress": "bg-[#7dd3df]",
-  "review": "bg-[#c4cf95]",
-  "done": "bg-[#e3eb9a]",
-};
-
-const COLUMN_SUBTITLES: Record<ColumnId, string> = {
-  "to-do": "Ideas and upcoming work",
-  "in-progress": "Active focus",
-  "review": "Ready for feedback",
-  "done": "Shipped or accepted",
-};
-
-const INITIAL_TASKS: Record<ColumnId, Task[]> = {
-  "to-do": [
-    {
-      id: "seed-1",
-      title: "Draft project README",
-      description: "Explain setup, scripts, and folder layout for reviewers.",
-      priority: "low",
-      tags: ["docs"],
-    },
-    {
-      id: "seed-2",
-      title: "Design board color tokens",
-      description: "Map palette to surfaces, borders, and accents.",
-      priority: "medium",
-      tags: ["design", "ui"],
-    },
-  ],
-  "in-progress": [
-    {
-      id: "seed-3",
-      title: "Implement drag and drop",
-      description: "Columns accept drops; reorder within a column.",
-      priority: "high",
-      tags: ["frontend"],
-    },
-  ],
-  "review": [
-    {
-      id: "seed-4",
-      title: "Accessibility pass",
-      description: "Verify focus order and screen reader labels on cards.",
-      priority: "medium",
-      tags: ["a11y"],
-    },
-  ],
-  "done": [
-    {
-      id: "seed-5",
-      title: "Scaffold Next.js app",
-      description: "App Router, Tailwind, and base layout.",
-      priority: "low",
-      tags: ["chore"],
-    },
-  ],
-};
-
-function findColumnForTask(
-  columns: Record<ColumnId, Task[]>,
-  taskId: string,
-): ColumnId | undefined {
-  for (const col of COLUMN_ORDER) {
-    if (columns[col].some((t) => t.id === taskId)) return col;
-  }
-  return undefined;
-}
-
-const dropAnimation: DropAnimation = {
-  sideEffects: defaultDropAnimationSideEffects({
-    styles: { active: { opacity: "0.45" } },
-  }),
-};
-
-const noopSubscribe = () => () => {};
-
-function useIsClient() {
-  return useSyncExternalStore(noopSubscribe, () => true, () => false);
-}
-
-export function KanbanBoard() {
+export function KanbanBoard({ tasks }: { tasks: Task[] | null }) {
   const boardReady = useIsClient();
 
   const [columns, setColumns] =
-    useState<Record<ColumnId, Task[]>>(INITIAL_TASKS);
+    useState<Record<ColumnId, Task[]>>(emptyColumns);
+
+  useEffect(() => {
+    startTransition(() => {
+      if (tasks) {
+        setColumns(groupTasksByColumn(tasks));
+      } else {
+        setColumns(emptyColumns());
+      }
+    });
+  }, [tasks]);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<
@@ -133,7 +66,7 @@ export function KanbanBoard() {
     const id = String(event.active.id);
     const col = findColumnForTask(columns, id);
     if (!col) return;
-    const task = columns[col].find((t) => t.id === id);
+    const task = columns[col].find((t) => String(t.id) === id);
     if (task) setActiveTask(task);
   }, [columns]);
 
@@ -161,13 +94,13 @@ export function KanbanBoard() {
         const oc = findColumnForTask(prev, overId);
         if (!oc) return prev;
         overColumn = oc;
-        overIndex = prev[overColumn].findIndex((t) => t.id === overId);
+        overIndex = prev[overColumn].findIndex((t) => String(t.id) === overId);
         if (overIndex < 0) return prev;
       }
 
       if (activeColumn === overColumn) {
         const list = prev[activeColumn];
-        const oldIndex = list.findIndex((t) => t.id === activeId);
+        const oldIndex = list.findIndex((t) => String(t.id) === activeId);
         if (oldIndex < 0) return prev;
         if (oldIndex === overIndex) return prev;
         return {
@@ -177,18 +110,19 @@ export function KanbanBoard() {
       }
 
       const sourceList = [...prev[activeColumn]];
-      const from = sourceList.findIndex((t) => t.id === activeId);
+      const from = sourceList.findIndex((t) => String(t.id) === activeId);
       if (from < 0) return prev;
       const [moved] = sourceList.splice(from, 1);
+      const movedWithColumn: Task = { ...moved, status: overColumn };
 
       const destList = [...prev[overColumn]];
 
       if (isColumnId(overId)) {
-        destList.push(moved);
+        destList.push(movedWithColumn);
       } else {
-        const idx = destList.findIndex((t) => t.id === overId);
-        if (idx >= 0) destList.splice(idx, 0, moved);
-        else destList.push(moved);
+        const idx = destList.findIndex((t) => String(t.id) === overId);
+        if (idx >= 0) destList.splice(idx, 0, movedWithColumn);
+        else destList.push(movedWithColumn);
       }
 
       return {
@@ -211,29 +145,50 @@ export function KanbanBoard() {
   };
 
   const openEdit = (task: Task) => {
-    const col = findColumnForTask(columns, task.id);
+    const col = findColumnForTask(columns, String(task.id));
     setFormMode({ type: "edit", task });
     if (col) setNewTaskDefaultColumn(col);
     setFormInstanceKey((k) => k + 1);
     setFormOpen(true);
   };
 
-  const handleSave = (payload: {
+  const handleSave = async (payload: {
     title: string;
     description: string;
     priority: TaskPriority;
     tags: string[];
     columnId: ColumnId;
   }) => {
+
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("You must be authenticated to create or update a task.");
+    }
+
     if (formMode.type === "create") {
+
+      const { data, error } = await supabase
+        .from("Tasks")
+        .insert({
+          title: payload.title,
+          description: payload.description,
+          priority: payload.priority,
+          status: payload.columnId,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       const task: Task = {
-        id: typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `task-${Date.now()}`,
-        title: payload.title,
-        description: payload.description,
-        priority: payload.priority,
-        tags: payload.tags,
+        ...data,
+        tags: payload.tags.length > 0 ? payload.tags : undefined,
       };
       setColumns((prev) => ({
         ...prev,
@@ -243,16 +198,42 @@ export function KanbanBoard() {
     }
 
     const { task: existing } = formMode;
-    const previousColumn = findColumnForTask(columns, existing.id);
+    const previousColumn = findColumnForTask(columns, String(existing.id));
     if (!previousColumn) return;
 
-    const updated: Task = {
+    let updated: Task = {
       ...existing,
       title: payload.title,
       description: payload.description,
       priority: payload.priority,
-      tags: payload.tags,
+      status: payload.columnId,
+      tags: payload.tags.length > 0 ? payload.tags : undefined,
     };
+    
+    if (existing.id > 0) {
+      const { data, error } = await supabase
+        .from("Tasks")
+        .update({
+          title: payload.title,
+          description: payload.description,
+          priority: payload.priority,
+          status: payload.columnId,
+        })
+        .eq("id", existing.id)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+      if (data) {
+        updated = {
+          ...data,
+          tags: payload.tags.length > 0 ? payload.tags : undefined,
+        };
+      }
+    }
 
     setColumns((prev) => {
       if (previousColumn === payload.columnId) {
@@ -273,41 +254,44 @@ export function KanbanBoard() {
     });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async(id: string | number) => {
+    const sid = String(id);
     setColumns((prev) => {
-      const col = findColumnForTask(prev, id);
+      const col = findColumnForTask(prev, sid);
       if (!col) return prev;
       return {
         ...prev,
-        [col]: prev[col].filter((t) => t.id !== id),
+        [col]: prev[col].filter((t) => String(t.id) !== sid),
       };
     });
+
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("You must be authenticated to delete a task.");
+    }
+
+    const { error } = await supabase
+      .from("Tasks")
+      .delete()
+      .eq("id", Number(sid))
+      .eq("user_id", user.id);
+
+    if (error) {
+      throw error;
+    }
   };
 
   const formInitialColumn: ColumnId =
     formMode.type === "edit"
-      ? findColumnForTask(columns, formMode.task.id) ?? "to-do"
+      ? findColumnForTask(columns, String(formMode.task.id)) ?? "to-do"
       : newTaskDefaultColumn;
 
   if (!boardReady) {
     return (
       <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#08605f] via-[#177e89] to-[#598381]">
-        <header className="border-b border-white/10 bg-[#08605f]/40 px-4 py-6 backdrop-blur-md sm:px-8">
-          <div className="mx-auto flex max-w-[1400px] flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#f4f7f2] sm:text-3xl">
-                Kanban Board
-              </h1>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/75">
-                Organize work visually: create tasks, prioritize, and drag cards
-                across stages.
-              </p>
-            </div>
-            <div className="inline-flex h-[48px] shrink-0 items-center justify-center rounded-xl bg-[#a2ad59]/50 px-5 text-sm font-semibold text-[#0c2524]/70 sm:h-[48px]">
-              Loading…
-            </div>
-          </div>
-        </header>
         <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 py-8 sm:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:overflow-x-auto lg:pb-2">
             {[0, 1, 2, 3].map((i) => (
@@ -324,28 +308,6 @@ export function KanbanBoard() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#08605f] via-[#177e89] to-[#598381]">
-      <header className="border-b border-white/10 bg-[#08605f]/40 px-4 py-6 backdrop-blur-md sm:px-8">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#f4f7f2] sm:text-3xl">
-              Kanban Board
-            </h1>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/75">
-              Organize work visually: create tasks, prioritize, and drag cards
-              across stages.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => openCreate("to-do")}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#a2ad59] px-5 py-3 text-sm font-semibold text-[#0c2524] shadow-lg shadow-black/25 transition hover:brightness-105"
-          >
-            <span className="text-lg leading-none">+</span>
-            New task
-          </button>
-        </div>
-      </header>
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -354,13 +316,25 @@ export function KanbanBoard() {
         onDragCancel={handleDragCancel}
       >
         <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 py-8 sm:px-8">
-          <div className="flex flex-wrap gap-3 text-xs text-white/70">
-            <span className="rounded-full bg-black/15 px-3 py-1 ring-1 ring-white/10">
-              Drag the handle or card between columns
-            </span>
-            <span className="rounded-full bg-black/15 px-3 py-1 ring-1 ring-white/10">
-              Reorder within a column
-            </span>
+          <div className="flex w-full flex-wrap items-center gap-3 text-xs text-white/70">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex min-h-[1.75rem] items-center rounded-full bg-black/15 px-3 py-1 ring-1 ring-white/10">
+                Drag the handle or card between columns
+              </span>
+              <span className="inline-flex min-h-[1.75rem] items-center rounded-full bg-black/15 px-3 py-1 ring-1 ring-white/10">
+                Reorder within a column
+              </span>
+            </div>
+            <div className="ml-auto flex shrink-0 max-sm:w-full max-sm:justify-end">
+              <button
+                type="button"
+                onClick={() => openCreate("to-do")}
+                className="inline-flex items-center justify-center cursor-pointer gap-1.5 rounded-lg bg-[#a2ad59] px-3 py-2 text-xs font-semibold text-[#0c2524] shadow-md shadow-black/20 transition hover:brightness-105"
+              >
+                <span className="text-base leading-none">+</span>
+                New task
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:overflow-x-auto lg:pb-2">

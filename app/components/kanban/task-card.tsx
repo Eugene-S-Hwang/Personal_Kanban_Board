@@ -2,10 +2,10 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { Task } from "./types";
+import type { Task, TaskPriority } from "./types";
 
 const priorityStyles: Record<
-  Task["priority"],
+  TaskPriority,
   { label: string; className: string }
 > = {
   low: {
@@ -46,7 +46,8 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
     transition,
   };
 
-  const pr = priorityStyles[task.priority];
+  const pr =
+    priorityStyles[task.priority as TaskPriority] ?? priorityStyles.medium;
 
   return (
     <article
@@ -90,9 +91,9 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
               {task.description}
             </p>
           ) : null}
-          {task.tags.length > 0 ? (
+          {(task.tags ?? []).length > 0 ? (
             <ul className="mt-2 flex flex-wrap gap-1.5">
-              {task.tags.map((tag) => (
+              {(task.tags ?? []).map((tag) => (
                 <li
                   key={tag}
                   className="rounded-md bg-[#8e936d]/20 px-2 py-0.5 text-[10px] font-medium text-[#0c2524] ring-1 ring-[#8e936d]/35"
@@ -116,7 +117,7 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
         <button
           type="button"
           className="rounded-lg px-2 py-1 text-xs font-medium text-red-700/90 hover:bg-red-500/10"
-          onClick={() => onDelete(task.id)}
+          onClick={() => onDelete(String(task.id))}
           onPointerDown={(e) => e.stopPropagation()}
         >
           Delete

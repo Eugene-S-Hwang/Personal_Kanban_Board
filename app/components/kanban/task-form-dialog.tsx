@@ -20,7 +20,7 @@ type TaskFormDialogProps = {
     priority: TaskPriority;
     tags: string[];
     columnId: ColumnId;
-  }) => void;
+  }) => void | Promise<void>;
 };
 
 const priorities: TaskPriority[] = ["low", "medium", "high"];
@@ -47,29 +47,33 @@ function TaskFormDialogBody({
     mode.type === "edit" ? mode.task.description : "",
   );
   const [priority, setPriority] = useState<TaskPriority>(() =>
-    mode.type === "edit" ? mode.task.priority : "medium",
+    mode.type === "edit" ? (mode.task.priority as TaskPriority) : "medium",
   );
   const [tagsInput, setTagsInput] = useState(() =>
-    mode.type === "edit" ? mode.task.tags.join(", ") : "",
+    mode.type === "edit" ? (mode.task.tags ?? []).join(", ") : "",
   );
   const [columnId, setColumnId] = useState<ColumnId>(() => initialColumn);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) return;
     const tags = tagsInput
       .split(",")
-      .map((t) => t.trim())
+      .map((t: string) => t.trim())
       .filter(Boolean);
-    onSave({
-      title: trimmed,
-      description: description.trim(),
-      priority,
-      tags,
-      columnId,
-    });
-    onClose();
+    try {
+      await onSave({
+        title: trimmed,
+        description: description.trim(),
+        priority,
+        tags,
+        columnId,
+      });
+      onClose();
+    } catch {
+      // Keep dialog open; parent may surface errors (e.g. insert failed).
+    }
   };
 
   return (
