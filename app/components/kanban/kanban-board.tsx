@@ -226,6 +226,23 @@ export function KanbanBoard({
       const sourceList = [...prev[activeColumn]];
       const from = sourceList.findIndex((t) => String(t.id) === activeId);
       if (from < 0) return prev;
+
+      queueMicrotask(() => {
+        void (async () => {
+          const supabase = createClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+          const { error } = await supabase
+            .from("Tasks")
+            .update({ status: overColumn })
+            .eq("id", activeId)
+            .eq("user_id", user.id);
+          if (error) console.error("Failed to persist task column:", error);
+        })();
+      });
+
       const [moved] = sourceList.splice(from, 1);
       const movedWithColumn: Task = { ...moved, status: overColumn };
 
