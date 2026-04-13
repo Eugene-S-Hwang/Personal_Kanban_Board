@@ -243,7 +243,7 @@ export function KanbanBoard({
           } = await supabase.auth.getUser();
           if (!user) return;
           const { error } = await supabase
-            .from("Tasks")
+            .from("tasks")
             .update({ status: overColumn })
             .eq("id", activeId)
             .eq("user_id", user.id);
@@ -323,7 +323,7 @@ export function KanbanBoard({
     if (formMode.type === "create") {
 
       const { data, error } = await supabase
-        .from("Tasks")
+        .from("tasks")
         .insert({
           title: payload.title,
           description: payload.description,
@@ -370,7 +370,7 @@ export function KanbanBoard({
     
     if (existing.id !== undefined) {
       const { data, error } = await supabase
-        .from("Tasks")
+        .from("tasks")
         .update({
           title: payload.title,
           description: payload.description,
@@ -450,7 +450,7 @@ export function KanbanBoard({
     }
 
     const { error } = await supabase
-      .from("Tasks")
+      .from("tasks")
       .delete()
       .eq("id", sid)
       .eq("user_id", user.id);

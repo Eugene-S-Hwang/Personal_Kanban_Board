@@ -20,7 +20,7 @@ export default async function Home() {
 
   const { data: tasks } =
     currentUser != null
-      ? await supabase.from("Tasks").select("*").eq("user_id", currentUser.id)
+      ? await supabase.from("tasks").select("*").eq("user_id", currentUser.id)
       : { data: null };
 
   const { data: tagRows } =

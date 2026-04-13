@@ -15,7 +15,7 @@ export type TaskPriority = "low" | "medium" | "high";
 // };
 
 /** DB row plus tag labels for UI and tag ids for forms / task_tags sync. */
-export type Task = Tables<"Tasks"> & {
+export type Task = Tables<"tasks"> & {
   /** Tag names for display (e.g. on cards). */
   tags?: string[];
   /** Selected tag row ids (from `tags` table). */
