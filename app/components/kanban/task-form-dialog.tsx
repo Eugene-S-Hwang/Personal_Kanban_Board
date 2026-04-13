@@ -71,8 +71,9 @@ function TaskFormDialogBody({
         columnId,
       });
       onClose();
-    } catch {
+    } catch (error){
       // Keep dialog open; parent may surface errors (e.g. insert failed).
+      console.error("Failed to save task ", error);
     }
   };
 

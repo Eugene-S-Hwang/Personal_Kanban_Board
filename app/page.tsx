@@ -23,6 +23,15 @@ export default async function Home() {
       ? await supabase.from("Tasks").select("*").eq("user_id", currentUser.id)
       : { data: null };
 
+  const { data: tagRows } =
+    currentUser != null
+      ? await supabase
+          .from("tags")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .order("name", { ascending: true })
+      : { data: null };
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#08605f] via-[#177e89] to-[#598381]">
       <header className="border-b border-white/10 bg-[#08605f]/40 px-4 py-6 backdrop-blur-md sm:px-8">
@@ -38,7 +47,7 @@ export default async function Home() {
           </div>
         </div>
       </header>
-      <KanbanBoard tasks={tasks} />
+      <KanbanBoard tasks={tasks} initialTags={tagRows} />
 
     </div>
     

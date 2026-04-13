@@ -14,11 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      task_tags: {
+        Row: {
+          created_at: string
+          id: string
+          tag_id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tag_id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tag_id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       Tasks: {
         Row: {
           created_at: string
           description: string
-          id: number
+          id: string
           priority: string
           status: string
           title: string
@@ -27,7 +72,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
-          id?: number
+          id?: string
           priority: string
           status: string
           title: string
@@ -36,7 +81,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
-          id?: number
+          id?: string
           priority?: string
           status?: string
           title?: string
@@ -49,7 +94,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_tag_and_task_links: {
+        Args: { p_tag_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
