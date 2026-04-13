@@ -35,6 +35,7 @@ import {
 } from "./kanban-board-utils";
 import { KanbanColumn } from "./kanban-column";
 import { KanbanSidebar } from "./kanban-sidebar";
+import { TaskDetailPanel } from "./task-detail-panel";
 import { TaskFormDialog } from "./task-form-dialog";
 import type { TagRow } from "./tag-create-form";
 import type { ColumnId, Task, TaskPriority } from "./types";
@@ -86,6 +87,17 @@ export function KanbanBoard({
   const [filterPriority, setFilterPriority] = useState<TaskPriority | null>(null);
   /** Substring match on task title (case-insensitive); applied after tag/priority filters. */
   const [titleSearch, setTitleSearch] = useState("");
+  /** Task id whose detail panel is open; latest task row is resolved from `columns`. */
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+
+  const detailTask = useMemo(() => {
+    if (!detailTaskId) return null;
+    for (const col of COLUMN_ORDER) {
+      const t = columns[col].find((x) => String(x.id) === detailTaskId);
+      if (t) return t;
+    }
+    return null;
+  }, [columns, detailTaskId]);
 
   useEffect(() => {
     startTransition(() => {
@@ -254,6 +266,10 @@ export function KanbanBoard({
     setFormOpen(true);
   };
 
+  const openTaskDetails = useCallback((task: Task) => {
+    setDetailTaskId(String(task.id));
+  }, []);
+
   const handleSave = async (payload: {
     title: string;
     description: string;
@@ -369,6 +385,7 @@ export function KanbanBoard({
 
   const handleDelete = async(id: string | number) => {
     const sid = String(id);
+    setDetailTaskId((prev) => (prev === sid ? null : prev));
     setColumns((prev) => {
       const col = findColumnForTask(prev, sid);
       if (!col) return prev;
@@ -573,6 +590,7 @@ export function KanbanBoard({
                     subtitle={COLUMN_SUBTITLES[columnId]}
                     tasks={displayColumns[columnId]}
                     accentClassName={COLUMN_ACCENTS[columnId]}
+                    onOpenTaskDetails={openTaskDetails}
                     onEditTask={openEdit}
                     onDeleteTask={handleDelete}
                   />
@@ -604,6 +622,13 @@ export function KanbanBoard({
           </DragOverlay>
         </DndContext>
       </div>
+
+      <TaskDetailPanel
+        task={detailTask}
+        open={detailTask !== null}
+        onClose={() => setDetailTaskId(null)}
+        onEditTask={openEdit}
+      />
 
       <TaskFormDialog
         open={formOpen}

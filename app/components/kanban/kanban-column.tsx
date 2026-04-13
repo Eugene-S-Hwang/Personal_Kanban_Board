@@ -11,6 +11,7 @@ type KanbanColumnProps = {
   subtitle: string;
   tasks: Task[];
   accentClassName: string;
+  onOpenTaskDetails: (task: Task) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 };
@@ -21,6 +22,7 @@ export function KanbanColumn({
   subtitle,
   tasks,
   accentClassName,
+  onOpenTaskDetails,
   onEditTask,
   onDeleteTask,
 }: KanbanColumnProps) {
@@ -67,6 +69,7 @@ export function KanbanColumn({
               <TaskCard
                 key={task.id}
                 task={task}
+                onOpenDetails={onOpenTaskDetails}
                 onEdit={onEditTask}
                 onDelete={onDeleteTask}
               />

@@ -27,11 +27,17 @@ const priorityStyles: Record<
 
 type TaskCardProps = {
   task: Task;
+  onOpenDetails: (task: Task) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
 };
 
-export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
+export function TaskCard({
+  task,
+  onOpenDetails,
+  onEdit,
+  onDelete,
+}: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -106,6 +112,14 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
         </div>
       </div>
       <div className="mt-3 flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <button
+          type="button"
+          className="rounded-lg px-2 py-1 text-xs font-medium text-[#a2ad59] hover:bg-[#a2ad59]/15"
+          onClick={() => onOpenDetails(task)}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          Details
+        </button>
         <button
           type="button"
           className="rounded-lg px-2 py-1 text-xs font-medium text-[#177e89] hover:bg-[#177e89]/15"
