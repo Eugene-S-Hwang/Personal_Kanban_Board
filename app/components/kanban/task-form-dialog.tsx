@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import type { TagRow } from "./tag-create-form";
 import type { ColumnId, Task, TaskPriority } from "./types";
 import { COLUMN_LABELS, COLUMN_ORDER } from "./types";
 
@@ -13,12 +14,15 @@ type TaskFormDialogProps = {
   mode: Mode;
   /** Column pre-selected when opening (create or edit). */
   initialColumn: ColumnId;
+  /** Tags the user has created (sidebar); task tags are chosen from this list. */
+  availableTags: TagRow[];
   onClose: () => void;
   onSave: (payload: {
     title: string;
     description: string;
     priority: TaskPriority;
-    tags: string[];
+    /** `tags.id` values to store in `task_tags`. */
+    tagIds: string[];
     columnId: ColumnId;
   }) => void | Promise<void>;
 };
@@ -28,6 +32,7 @@ const priorities: TaskPriority[] = ["low", "medium", "high"];
 type TaskFormDialogBodyProps = {
   mode: Mode;
   initialColumn: ColumnId;
+  availableTags: TagRow[];
   titleId: string;
   onClose: TaskFormDialogProps["onClose"];
   onSave: TaskFormDialogProps["onSave"];
@@ -36,6 +41,7 @@ type TaskFormDialogBodyProps = {
 function TaskFormDialogBody({
   mode,
   initialColumn,
+  availableTags,
   titleId,
   onClose,
   onSave,
@@ -49,25 +55,29 @@ function TaskFormDialogBody({
   const [priority, setPriority] = useState<TaskPriority>(() =>
     mode.type === "edit" ? (mode.task.priority as TaskPriority) : "medium",
   );
-  const [tagsInput, setTagsInput] = useState(() =>
-    mode.type === "edit" ? (mode.task.tags ?? []).join(", ") : "",
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() =>
+    mode.type === "edit" ? [...(mode.task.tagIds ?? [])] : [],
   );
   const [columnId, setColumnId] = useState<ColumnId>(() => initialColumn);
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId],
+    );
+  };
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) return;
-    const tags = tagsInput
-      .split(",")
-      .map((t: string) => t.trim())
-      .filter(Boolean);
     try {
       await onSave({
         title: trimmed,
         description: description.trim(),
         priority,
-        tags,
+        tagIds: selectedTagIds,
         columnId,
       });
       onClose();
@@ -174,24 +184,45 @@ function TaskFormDialogBody({
               </select>
             </div>
           </div>
-          <div>
-            <label
-              htmlFor="task-tags"
-              className="block text-xs font-medium uppercase tracking-wide text-[#a2ad59]"
-            >
+          <fieldset className="min-w-0">
+            <legend className="block text-xs font-medium uppercase tracking-wide text-[#a2ad59]">
               Tags
-            </label>
-            <input
-              id="task-tags"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/15 bg-[#08605f]/25 px-3 py-2 text-sm text-[#f4f7f2] placeholder:text-white/35 outline-none ring-[#177e89] focus:ring-2"
-              placeholder="design, api, polish"
-            />
-            <p className="mt-1 text-[11px] text-white/45">
-              Comma-separated — stored in the browser only for this session.
-            </p>
-          </div>
+            </legend>
+            {availableTags.length === 0 ? (
+              <p className="mt-2 text-[11px] leading-relaxed text-white/45">
+                No tags yet. Add tags in the sidebar, then assign them here.
+              </p>
+            ) : (
+              <ul className="mt-2 max-h-36 space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-[#08605f]/20 px-3 py-2 pr-2">
+                {availableTags.map((tag) => {
+                  const id = `task-tag-${tag.id}`;
+                  const checked = selectedTagIds.includes(tag.id);
+                  return (
+                    <li key={tag.id}>
+                      <label
+                        htmlFor={id}
+                        className="flex cursor-pointer items-center gap-2.5 text-sm text-[#f4f7f2]"
+                      >
+                        <input
+                          id={id}
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleTag(tag.id)}
+                          className="h-4 w-4 shrink-0 rounded border-white/25 bg-[#0f3534] text-[#a2ad59] ring-[#177e89] focus:ring-2"
+                        />
+                        <span className="min-w-0 truncate">{tag.name}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {availableTags.length > 0 ? (
+              <p className="mt-1.5 text-[11px] text-white/45">
+                Saved to this task in the database.
+              </p>
+            ) : null}
+          </fieldset>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -218,6 +249,7 @@ export function TaskFormDialog({
   instanceKey,
   mode,
   initialColumn,
+  availableTags,
   onClose,
   onSave,
 }: TaskFormDialogProps) {
@@ -230,6 +262,7 @@ export function TaskFormDialog({
       key={instanceKey}
       mode={mode}
       initialColumn={initialColumn}
+      availableTags={availableTags}
       titleId={titleId}
       onClose={onClose}
       onSave={onSave}

@@ -8,9 +8,16 @@ export type TagRow = Tables<"tags">;
 
 type TagCreateFormProps = {
   initialTags: TagRow[] | null;
+  setAvailableTags: (tags: TagRow[]) => void;
+  /** Called after a tag is removed from the DB so task cards can drop stale labels. */
+  onTagDeleted?: (tagId: string) => void;
 };
 
-export function TagCreateForm({ initialTags }: TagCreateFormProps) {
+export function TagCreateForm({
+  initialTags,
+  setAvailableTags,
+  onTagDeleted,
+}: TagCreateFormProps) {
   const [name, setName] = useState("");
   const [tags, setTags] = useState<TagRow[]>(() => initialTags ?? []);
   const [pending, setPending] = useState(false);
@@ -47,11 +54,15 @@ export function TagCreateForm({ initialTags }: TagCreateFormProps) {
         throw insertError;
       }
       if (data) {
-        setTags((prev) =>
-          [...prev, data].sort((a, b) =>
+        setTags((prev) => {
+          const next = [...prev, data].sort((a, b) =>
             a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-          ),
-        );
+          );
+          queueMicrotask(() => {
+            setAvailableTags(next);
+          });
+          return next;
+        });
         setName("");
       }
     } catch (err: unknown) {
@@ -95,7 +106,14 @@ export function TagCreateForm({ initialTags }: TagCreateFormProps) {
         return;
       }
 
-      setTags((prev) => prev.filter((t) => t.id !== tagId));
+      setTags((prev) => {
+        const next = prev.filter((t) => t.id !== tagId);
+        queueMicrotask(() => {
+          setAvailableTags(next);
+          onTagDeleted?.(tagId);
+        });
+        return next;
+      });
     } catch (err: unknown) {
       console.error("Failed to delete tag", err);
       setError(

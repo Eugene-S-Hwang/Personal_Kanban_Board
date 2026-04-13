@@ -32,6 +32,38 @@ export default async function Home() {
           .order("name", { ascending: true })
       : { data: null };
 
+  const { data: taskTagLinks } =
+    currentUser != null
+      ? await supabase
+          .from("task_tags")
+          .select("task_id, tag_id")
+          .eq("user_id", currentUser.id)
+      : { data: null };
+
+  const tagNameById = new Map(
+    (tagRows ?? []).map((t) => [t.id, t.name] as const),
+  );
+  const tagIdsByTaskId = new Map<string, string[]>();
+  for (const row of taskTagLinks ?? []) {
+    const list = tagIdsByTaskId.get(row.task_id) ?? [];
+    list.push(row.tag_id);
+    tagIdsByTaskId.set(row.task_id, list);
+  }
+
+  const tasksWithTags =
+    tasks != null
+      ? tasks.map((t) => {
+          const ids = tagIdsByTaskId.get(t.id) ?? [];
+          return {
+            ...t,
+            tagIds: ids,
+            tags: ids
+              .map((id) => tagNameById.get(id))
+              .filter((n): n is string => n !== undefined),
+          };
+        })
+      : null;
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#08605f] via-[#177e89] to-[#598381]">
       <header className="border-b border-white/10 bg-[#08605f]/40 px-4 py-6 backdrop-blur-md sm:px-8">
@@ -47,7 +79,7 @@ export default async function Home() {
           </div>
         </div>
       </header>
-      <KanbanBoard tasks={tasks} initialTags={tagRows} />
+      <KanbanBoard tasks={tasksWithTags} initialTags={tagRows} />
 
     </div>
     

@@ -4,10 +4,17 @@ import { TagCreateForm, type TagRow } from "./tag-create-form";
 
 type KanbanSidebarProps = {
   initialTags: TagRow[] | null;
+  setAvailableTags: (tags: TagRow[]) => void;
+  onTagDeleted?: (tagId: string) => void;
   onNewTask: () => void;
 };
 
-export function KanbanSidebar({ initialTags, onNewTask }: KanbanSidebarProps) {
+export function KanbanSidebar({
+  initialTags,
+  setAvailableTags,
+  onTagDeleted,
+  onNewTask,
+}: KanbanSidebarProps) {
   return (
     <aside
       className="flex w-full flex-col gap-5 rounded-2xl border border-white/15 bg-[#08605f]/25 p-4 shadow-lg shadow-black/10 backdrop-blur-sm lg:sticky lg:top-8 lg:max-h-[min(100vh-6rem,calc(100vh-5rem))] lg:w-[150px] lg:shrink-0 lg:overflow-y-auto"
@@ -28,7 +35,11 @@ export function KanbanSidebar({ initialTags, onNewTask }: KanbanSidebarProps) {
       </div>
 
       <div className="border-t border-white/10 pt-1">
-        <TagCreateForm initialTags={initialTags} />
+        <TagCreateForm
+          initialTags={initialTags}
+          setAvailableTags={setAvailableTags}
+          onTagDeleted={onTagDeleted}
+        />
       </div>
     </aside>
   );

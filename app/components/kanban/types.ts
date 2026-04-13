@@ -14,9 +14,12 @@ export type TaskPriority = "low" | "medium" | "high";
 //   // tags: string[];
 // };
 
-/** DB row plus optional UI-only fields not stored in Supabase yet. */
+/** DB row plus tag labels for UI and tag ids for forms / task_tags sync. */
 export type Task = Tables<"Tasks"> & {
+  /** Tag names for display (e.g. on cards). */
   tags?: string[];
+  /** Selected tag row ids (from `tags` table). */
+  tagIds?: string[];
 };
 
 export const COLUMN_ORDER: ColumnId[] = [
