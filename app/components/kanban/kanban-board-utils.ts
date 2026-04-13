@@ -136,3 +136,71 @@ export async function syncTaskTagsForTask(
     throw insertError;
   }
 }
+
+/** Whole calendar days from local today to `dueDate` (`YYYY-MM-DD`). Negative = overdue. */
+export function calendarDaysUntilDue(dueDateIso: string): number {
+  const parts = dueDateIso.split("-").map(Number);
+  const y = parts[0];
+  const m = parts[1];
+  const d = parts[2];
+  if (
+    y === undefined ||
+    m === undefined ||
+    d === undefined ||
+    Number.isNaN(y) ||
+    Number.isNaN(m) ||
+    Number.isNaN(d)
+  ) {
+    return 0;
+  }
+  const due = new Date(y, m - 1, d);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((due.getTime() - today.getTime()) / 86400000);
+}
+
+export type DueUrgency = "overdue" | "soon" | "upcoming";
+
+/** Urgency for open tasks with a due date (no accent once moved to Done). */
+export function getDueUrgency(task: {
+  due_date: string | null | undefined;
+  status: string;
+}): DueUrgency | null {
+  if (!task.due_date) return null;
+  if (task.status === "done") return null;
+  const diff = calendarDaysUntilDue(task.due_date);
+  if (diff < 0) return "overdue";
+  if (diff <= 3) return "soon";
+  return "upcoming";
+}
+
+/** Text color on light card surface (e.g. drag overlay). */
+export function dueUrgencyTextClassOnLight(
+  urgency: DueUrgency | null,
+): string {
+  if (urgency === "overdue") return "text-red-800";
+  if (urgency === "soon") return "font-semibold text-amber-600";
+  return "text-[#598381]";
+}
+
+export function formatDueDateShort(iso: string) {
+  const parts = iso.split("-").map(Number);
+  const y = parts[0];
+  const m = parts[1];
+  const d = parts[2];
+  if (
+    y === undefined ||
+    m === undefined ||
+    d === undefined ||
+    Number.isNaN(y) ||
+    Number.isNaN(m) ||
+    Number.isNaN(d)
+  ) {
+    return iso;
+  }
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}

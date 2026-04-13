@@ -31,8 +31,12 @@ import {
   useIsClient,
   stripTagIdFromTask,
   tagLabelsForIds,
+  dueUrgencyTextClassOnLight,
+  formatDueDateShort,
+  getDueUrgency,
   syncTaskTagsForTask,
 } from "./kanban-board-utils";
+import { ConfirmDialog } from "./confirm-dialog";
 import { KanbanColumn } from "./kanban-column";
 import { KanbanSidebar } from "./kanban-sidebar";
 import { TaskDetailPanel } from "./task-detail-panel";
@@ -89,6 +93,10 @@ export function KanbanBoard({
   const [titleSearch, setTitleSearch] = useState("");
   /** Task id whose detail panel is open; latest task row is resolved from `columns`. */
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  /** Set when the user chooses Delete on a card; cleared after confirm or cancel. */
+  const [taskPendingDeleteId, setTaskPendingDeleteId] = useState<string | null>(
+    null,
+  );
 
   const detailTask = useMemo(() => {
     if (!detailTaskId) return null;
@@ -291,6 +299,7 @@ export function KanbanBoard({
     title: string;
     description: string;
     priority: TaskPriority;
+    dueDate: string;
     tagIds: string[];
     columnId: ColumnId;
   }) => {
@@ -308,6 +317,9 @@ export function KanbanBoard({
       availableTags,
     );
 
+    const dueDateValue =
+      payload.dueDate.trim() !== "" ? payload.dueDate.trim() : null;
+
     if (formMode.type === "create") {
 
       const { data, error } = await supabase
@@ -318,6 +330,7 @@ export function KanbanBoard({
           priority: payload.priority,
           status: payload.columnId,
           user_id: user.id,
+          due_date: dueDateValue,
         })
         .select()
         .single();
@@ -350,6 +363,7 @@ export function KanbanBoard({
       description: payload.description,
       priority: payload.priority,
       status: payload.columnId,
+      due_date: dueDateValue,
       tagIds: resolvedTagIds.length > 0 ? resolvedTagIds : undefined,
       tags: resolvedTagLabels.length > 0 ? resolvedTagLabels : undefined,
     };
@@ -362,6 +376,7 @@ export function KanbanBoard({
           description: payload.description,
           priority: payload.priority,
           status: payload.columnId,
+          due_date: dueDateValue,
         })
         .eq("id", existing.id)
         .eq("user_id", user.id)
@@ -399,6 +414,10 @@ export function KanbanBoard({
       };
     });
   };
+
+  const requestTaskDelete = useCallback((id: string | number) => {
+    setTaskPendingDeleteId(String(id));
+  }, []);
 
   const handleDelete = async(id: string | number) => {
     const sid = String(id);
@@ -609,7 +628,7 @@ export function KanbanBoard({
                     accentClassName={COLUMN_ACCENTS[columnId]}
                     onOpenTaskDetails={openTaskDetails}
                     onEditTask={openEdit}
-                    onDeleteTask={handleDelete}
+                    onDeleteTask={requestTaskDelete}
                   />
                   <button
                     type="button"
@@ -629,6 +648,15 @@ export function KanbanBoard({
                 <p className="text-sm font-semibold text-[#0c2524]">
                   {activeTask.title}
                 </p>
+                {activeTask.due_date ? (
+                  <p
+                    className={`mt-1 text-[10px] font-semibold ${dueUrgencyTextClassOnLight(
+                      getDueUrgency(activeTask),
+                    )}`}
+                  >
+                    Due {formatDueDateShort(activeTask.due_date)}
+                  </p>
+                ) : null}
                 {activeTask.description ? (
                   <p className="mt-1 line-clamp-2 text-xs text-[#598381]">
                     {activeTask.description}
@@ -645,6 +673,18 @@ export function KanbanBoard({
         open={detailTask !== null}
         onClose={() => setDetailTaskId(null)}
         onEditTask={openEdit}
+      />
+
+      <ConfirmDialog
+        open={taskPendingDeleteId !== null}
+        title="Delete this task?"
+        message="This will permanently remove the task, its tags, and its comments. This can’t be undone."
+        onCancel={() => setTaskPendingDeleteId(null)}
+        onConfirm={() => {
+          const id = taskPendingDeleteId;
+          setTaskPendingDeleteId(null);
+          if (id) void handleDelete(id);
+        }}
       />
 
       <TaskFormDialog

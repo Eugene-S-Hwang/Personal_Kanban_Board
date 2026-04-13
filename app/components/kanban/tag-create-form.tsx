@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/app/utils/supabase/client";
 import type { Tables } from "@/app/utils/supabase/database.types";
+import { ConfirmDialog } from "./confirm-dialog";
 
 export type TagRow = Tables<"tags">;
 
@@ -22,6 +23,10 @@ export function TagCreateForm({
   const [tags, setTags] = useState<TagRow[]>(() => initialTags ?? []);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tagPendingDelete, setTagPendingDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     setTags(initialTags ?? []);
@@ -167,7 +172,9 @@ export function TagCreateForm({
               <span className="min-w-0 truncate">{t.name}</span>
               <button
                 type="button"
-                onClick={() => handleDelete(t.id)}
+                onClick={() =>
+                  setTagPendingDelete({ id: t.id, name: t.name })
+                }
                 className="shrink-0 rounded-full px-1 text-red-400/90 transition hover:bg-white/10 hover:text-red-300"
                 aria-label={`Delete tag ${t.name}`}
               >
@@ -177,6 +184,22 @@ export function TagCreateForm({
           ))}
         </ul>
       ) : null}
+
+      <ConfirmDialog
+        open={tagPendingDelete !== null}
+        title="Delete this tag?"
+        message={
+          tagPendingDelete
+            ? `The tag "${tagPendingDelete.name}" will be removed from all tasks. This can't be undone.`
+            : ""
+        }
+        onCancel={() => setTagPendingDelete(null)}
+        onConfirm={() => {
+          const id = tagPendingDelete?.id;
+          setTagPendingDelete(null);
+          if (id) void handleDelete(id);
+        }}
+      />
     </div>
   );
 }

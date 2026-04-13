@@ -2,6 +2,10 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  formatDueDateShort,
+  getDueUrgency,
+} from "./kanban-board-utils";
 import type { Task, TaskPriority } from "./types";
 
 const priorityStyles: Record<
@@ -55,11 +59,19 @@ export function TaskCard({
   const pr =
     priorityStyles[task.priority as TaskPriority] ?? priorityStyles.medium;
 
+  const urgency = getDueUrgency(task);
+  const dueRing =
+    urgency === "overdue"
+      ? "border-red-600/55 ring-2 ring-red-500/35 bg-red-950/15"
+      : urgency === "soon"
+        ? "border-amber-300/90 ring-2 ring-amber-300/65 bg-amber-200/35 shadow-[0_0_0_1px_rgba(251,191,36,0.25)]"
+        : "border-white/15";
+
   return (
     <article
       ref={setNodeRef}
       style={style}
-      className={`group relative rounded-xl border border-white/15 bg-[var(--kb-surface)] p-3 shadow-sm shadow-black/20 backdrop-blur-sm transition-[box-shadow,opacity] ${
+      className={`group relative rounded-xl border bg-[var(--kb-surface)] p-3 shadow-sm shadow-black/20 backdrop-blur-sm transition-[box-shadow,opacity] ${dueRing} ${
         isDragging ? "z-10 opacity-40 shadow-lg" : "hover:border-[#a2ad59]/45"
       }`}
     >
@@ -92,6 +104,43 @@ export function TaskCard({
               {pr.label}
             </span>
           </div>
+          {task.due_date ? (
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span
+                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1 ${
+                  urgency === "overdue"
+                    ? "bg-red-500/15 text-red-900 ring-red-600/45"
+                    : urgency === "soon"
+                      ? "bg-amber-300/55 text-amber-950 ring-2 ring-amber-400/80 shadow-sm"
+                      : "bg-[#598381]/15 text-[#598381] ring-[#598381]/35"
+                }`}
+                title={`Due ${task.due_date}`}
+              >
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="shrink-0 opacity-90"
+                  aria-hidden
+                >
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+                {urgency === "overdue" ? (
+                  <>Overdue · {formatDueDateShort(task.due_date)}</>
+                ) : urgency === "soon" ? (
+                  <>Due soon · {formatDueDateShort(task.due_date)}</>
+                ) : urgency === "upcoming" ? (
+                  <>Due {formatDueDateShort(task.due_date)}</>
+                ) : (
+                  <>Done · {formatDueDateShort(task.due_date)}</>
+                )}
+              </span>
+            </div>
+          ) : null}
           {task.description ? (
             <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-[#598381]">
               {task.description}

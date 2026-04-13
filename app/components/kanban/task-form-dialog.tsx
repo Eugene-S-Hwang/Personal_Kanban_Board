@@ -21,6 +21,8 @@ type TaskFormDialogProps = {
     title: string;
     description: string;
     priority: TaskPriority;
+    /** `YYYY-MM-DD` or empty string to clear. */
+    dueDate: string;
     /** `tags.id` values to store in `task_tags`. */
     tagIds: string[];
     columnId: ColumnId;
@@ -59,6 +61,11 @@ function TaskFormDialogBody({
     mode.type === "edit" ? [...(mode.task.tagIds ?? [])] : [],
   );
   const [columnId, setColumnId] = useState<ColumnId>(() => initialColumn);
+  const [dueDate, setDueDate] = useState(() =>
+    mode.type === "edit" && mode.task.due_date
+      ? mode.task.due_date
+      : "",
+  );
 
   const toggleTag = (tagId: string) => {
     setSelectedTagIds((prev) =>
@@ -77,6 +84,7 @@ function TaskFormDialogBody({
         title: trimmed,
         description: description.trim(),
         priority,
+        dueDate,
         tagIds: selectedTagIds,
         columnId,
       });
@@ -183,6 +191,24 @@ function TaskFormDialogBody({
                 ))}
               </select>
             </div>
+          </div>
+          <div>
+            <label
+              htmlFor="task-due-date"
+              className="block text-xs font-medium uppercase tracking-wide text-[#a2ad59]"
+            >
+              Due date
+            </label>
+            <input
+              id="task-due-date"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-white/15 bg-[#08605f]/25 px-3 py-2 text-sm text-[#f4f7f2] outline-none ring-[#177e89] focus:ring-2"
+            />
+            <p className="mt-1 text-[11px] text-white/45">
+              Optional. Leave empty for no due date.
+            </p>
           </div>
           <fieldset className="min-w-0">
             <legend className="block text-xs font-medium uppercase tracking-wide text-[#a2ad59]">

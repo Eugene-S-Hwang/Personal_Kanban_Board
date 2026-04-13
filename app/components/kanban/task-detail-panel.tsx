@@ -3,6 +3,11 @@
 import { useEffect, useId, useState } from "react";
 import { createClient } from "@/app/utils/supabase/client";
 import type { Tables } from "@/app/utils/supabase/database.types";
+import {
+  formatDueDateShort,
+  getDueUrgency,
+} from "./kanban-board-utils";
+import { downloadTaskAsIcs } from "./task-to-ics";
 import type { ColumnId, Task, TaskPriority } from "./types";
 import { COLUMN_LABELS, COLUMN_ORDER } from "./types";
 
@@ -135,7 +140,7 @@ function TaskDetailPanelInner({
     setComments((prev) => prev.filter((x) => x.id !== comment.id));
   };
 
-  const handleSubmitComment = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitComment = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = body.trim();
     if (!trimmed) return;
@@ -168,6 +173,7 @@ function TaskDetailPanelInner({
     priorityStyles[task.priority as TaskPriority] ?? priorityStyles.medium;
   const col = task.status as ColumnId;
   const columnLabel = COLUMN_ORDER.includes(col) ? COLUMN_LABELS[col] : null;
+  const dueUrgency = getDueUrgency(task);
 
   return (
     <div className="fixed inset-0 z-[45] flex items-end justify-center p-4 sm:items-stretch sm:justify-end sm:p-0">
@@ -201,8 +207,48 @@ function TaskDetailPanelInner({
                 <span className="text-xs text-white/55">{columnLabel}</span>
               ) : null}
             </div>
+            {task.due_date ? (
+              <p
+                className={`mt-2 flex items-center gap-1.5 text-xs ${
+                  dueUrgency === "overdue"
+                    ? "font-medium text-red-300"
+                    : dueUrgency === "soon"
+                      ? "font-semibold text-[#fef3c7]"
+                      : "text-white/50"
+                }`}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="shrink-0 opacity-90"
+                  aria-hidden
+                >
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+                <span>
+                  Due {formatDueDateShort(task.due_date)}
+                  {dueUrgency === "overdue"
+                    ? " — overdue"
+                    : dueUrgency === "soon"
+                      ? " — due soon"
+                      : null}
+                </span>
+              </p>
+            ) : null}
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-xl px-3 py-1.5 text-sm font-medium text-[#a2ad59] hover:bg-[#a2ad59]/15"
+              onClick={() => downloadTaskAsIcs(task)}
+            >
+              Download .ics
+            </button>
             <button
               type="button"
               className="rounded-xl px-3 py-1.5 text-sm font-medium text-[#177e89] hover:bg-[#177e89]/15"
