@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import { createClient } from "@/app/utils/supabase/client";
+import { ensureAuthUser } from "@/app/utils/supabase/ensure-auth-user";
 import {
   COLUMN_ACCENTS,
   COLUMN_SUBTITLES,
@@ -305,12 +306,7 @@ export function KanbanBoard({
   }) => {
 
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error("You must be authenticated to create or update a task.");
-    }
+    const user = await ensureAuthUser();
 
     const { tagIds: resolvedTagIds, tags: resolvedTagLabels } = tagLabelsForIds(
       payload.tagIds,
